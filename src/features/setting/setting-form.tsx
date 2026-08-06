@@ -42,6 +42,7 @@ export function SettingForm({ settings }: SettingFormProps) {
     defaultValues: {
       institution_name: settings.institution_name,
       institution_address: settings.institution_address,
+      akreditasi_no_sk: settings.akreditasi_no_sk,
       simakad_base_url: settings.simakad_base_url,
       scrape_timeout_ms: settings.scrape_timeout_ms,
       predikat_thresholds: settings.predikat_thresholds,
@@ -110,6 +111,28 @@ export function SettingForm({ settings }: SettingFormProps) {
                   <FormControl>
                     <Textarea disabled={isSubmitting} {...field} value={field.value ?? ""} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="akreditasi_no_sk"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nomor SK BAN-PT</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="2759/SK/BAN-PT/Ak-PKP/S/V/2020"
+                      disabled={isSubmitting}
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Dicetak pada baris akreditasi di header transkrip: &ldquo;Terakreditasi Unggul
+                    berdasarkan SK BAN-PT Nomor : ...&rdquo;.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

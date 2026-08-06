@@ -50,6 +50,15 @@ export async function getInstitutionName() {
   return getSettingValue<string>("institution_name", "Universitas Contoh Palembang");
 }
 
+/**
+ * BAN-PT decree number printed on the transcript's accreditation header line. It belongs to
+ * the institution's accreditation as a whole, so it is a single global value rather than
+ * a column on `Akreditasi`.
+ */
+export async function getAkreditasiNoSk() {
+  return getSettingValue<string>("akreditasi_no_sk", "");
+}
+
 export async function getPrintSettings() {
   const [paperSize, topMarginCm, font] = await Promise.all([
     getSettingValue<string>("print_paper_size", "F4"),
@@ -62,24 +71,33 @@ export async function getPrintSettings() {
 export interface EditableSettings {
   institution_name: string;
   institution_address: string;
+  akreditasi_no_sk: string;
   simakad_base_url: string;
   scrape_timeout_ms: number;
   predikat_thresholds: PredikatThreshold[];
 }
 
 export async function getEditableSettings(): Promise<EditableSettings> {
-  const [institutionName, institutionAddress, simakadBaseUrl, scrapeTimeoutMs, thresholds] =
-    await Promise.all([
-      getInstitutionName(),
-      getSettingValue<string>("institution_address", ""),
-      getSimakadBaseUrl(),
-      getScrapeTimeoutMs(),
-      getPredikatThresholds(),
-    ]);
+  const [
+    institutionName,
+    institutionAddress,
+    akreditasiNoSk,
+    simakadBaseUrl,
+    scrapeTimeoutMs,
+    thresholds,
+  ] = await Promise.all([
+    getInstitutionName(),
+    getSettingValue<string>("institution_address", ""),
+    getAkreditasiNoSk(),
+    getSimakadBaseUrl(),
+    getScrapeTimeoutMs(),
+    getPredikatThresholds(),
+  ]);
 
   return {
     institution_name: institutionName,
     institution_address: institutionAddress,
+    akreditasi_no_sk: akreditasiNoSk,
     simakad_base_url: simakadBaseUrl,
     scrape_timeout_ms: scrapeTimeoutMs,
     predikat_thresholds: thresholds,
@@ -89,6 +107,7 @@ export async function getEditableSettings(): Promise<EditableSettings> {
 const SETTING_DESCRIPTIONS: Record<keyof EditableSettings, string> = {
   institution_name: "Nama institusi, ditampilkan di header transkrip",
   institution_address: "Alamat institusi",
+  akreditasi_no_sk: "Nomor SK BAN-PT, dicetak pada baris akreditasi di header transkrip",
   simakad_base_url: "Base URL sistem SIMAKAD eksternal, sumber data nilai/IPK live",
   scrape_timeout_ms: "Timeout (ms) saat mengambil data dari SIMAKAD",
   predikat_thresholds: "Ambang batas IPK untuk menghitung predikat kelulusan (urut menurun)",
@@ -98,6 +117,7 @@ export async function updateEditableSettings(input: EditableSettings, actor: Act
   const entries: [keyof EditableSettings, InputJsonValue][] = [
     ["institution_name", input.institution_name],
     ["institution_address", input.institution_address],
+    ["akreditasi_no_sk", input.akreditasi_no_sk],
     ["simakad_base_url", input.simakad_base_url],
     ["scrape_timeout_ms", input.scrape_timeout_ms],
     ["predikat_thresholds", input.predikat_thresholds as unknown as InputJsonValue],

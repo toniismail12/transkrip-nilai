@@ -24,6 +24,7 @@ export async function PUT(request: NextRequest) {
       {
         institution_name: input.institution_name,
         institution_address: input.institution_address ?? "",
+        akreditasi_no_sk: input.akreditasi_no_sk ?? "",
         simakad_base_url: input.simakad_base_url,
         scrape_timeout_ms: input.scrape_timeout_ms,
         predikat_thresholds: input.predikat_thresholds,

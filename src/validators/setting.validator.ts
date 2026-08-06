@@ -22,6 +22,11 @@ export const settingFormSchema = z
       .min(1, { error: "Nama institusi wajib diisi" })
       .max(255),
     institution_address: z.string().max(500).optional().or(z.literal("")),
+    akreditasi_no_sk: z
+      .string()
+      .max(255, { error: "Nomor SK BAN-PT maksimal 255 karakter" })
+      .optional()
+      .or(z.literal("")),
     simakad_base_url: z
       .url({ error: "URL SIMAKAD tidak valid (contoh: https://simakad.contoh.ac.id)" })
       .max(255),

@@ -4,6 +4,7 @@ import { nilaiRepository, type ScrapedCourseRow } from "@/repositories/nilai.rep
 import { akreditasiRepository } from "@/repositories/akreditasi.repository";
 import { computePredikat } from "@/services/predikat.service";
 import { formatDateIndonesian, formatProgramPendidikan } from "@/lib/format";
+import { getAkreditasiNoSk } from "@/services/setting.service";
 import { BadRequestError, ConflictError, NotFoundError } from "@/lib/errors";
 import { ACTIVITY_ACTIONS, logActivity } from "@/services/activity-log.service";
 import type { InputJsonValue } from "@prisma/client/runtime/client";
@@ -22,12 +23,16 @@ export interface TranskripBiodata {
 
 interface TranskripBiodataSnapshot extends TranskripBiodata {
   akreditasiLabel: string;
+  // Absent on transcripts generated before the "Nomor SK BAN-PT" row existed.
+  akreditasiNoSk?: string | null;
   dekanNama: string;
   tanggalSuratKeputusan: string | null;
 }
 
 export interface TranskripPdfData {
   noSeri: string | null;
+  /** Signature-line date. Frozen at generate time so a reprint keeps the original date. */
+  tanggalCetak: string;
   biodata: TranskripBiodataSnapshot;
   courses: ScrapedCourseRow[];
   totalSks: number;
@@ -66,18 +71,22 @@ function buildBiodata(
 
 export async function previewTranskrip(npm: string): Promise<TranskripPdfData> {
   const mahasiswa = await findMahasiswaByNpmOrThrow(npm);
-  const [scraped, akreditasiAktif] = await Promise.all([
+  const [scraped, akreditasiAktif, akreditasiNoSk] = await Promise.all([
     nilaiRepository.getByNim(npm),
     akreditasiRepository.findActive(),
+    getAkreditasiNoSk(),
   ]);
 
   const predikat = await computePredikat(scraped.ipk);
 
   return {
     noSeri: mahasiswa.noSeri,
+    // Nothing is persisted for a preview, so the signature line shows today's date.
+    tanggalCetak: formatDateIndonesian(new Date()) ?? "-",
     biodata: {
       ...buildBiodata(mahasiswa),
       akreditasiLabel: akreditasiAktif?.nama ?? "-",
+      akreditasiNoSk: akreditasiNoSk || null,
       dekanNama: mahasiswa.fakultas.dekan,
       tanggalSuratKeputusan: formatDateIndonesian(mahasiswa.tglSkDekan),
     },
@@ -101,9 +110,10 @@ interface GenerateTranskripInput {
 
 export async function generateTranskrip({ npm, noSeri, userId, userName }: GenerateTranskripInput) {
   const mahasiswa = await findMahasiswaByNpmOrThrow(npm);
-  const [scraped, akreditasiAktif] = await Promise.all([
+  const [scraped, akreditasiAktif, akreditasiNoSk] = await Promise.all([
     nilaiRepository.getByNim(npm),
     akreditasiRepository.findActive(),
+    getAkreditasiNoSk(),
   ]);
 
   const predikat = await computePredikat(scraped.ipk);
@@ -125,6 +135,7 @@ export async function generateTranskrip({ npm, noSeri, userId, userName }: Gener
     biodataSnapshot: {
       ...biodata,
       akreditasiLabel: akreditasiAktif?.nama ?? "-",
+      akreditasiNoSk: akreditasiNoSk || null,
       dekanNama: mahasiswa.fakultas.dekan,
       tanggalSuratKeputusan: formatDateIndonesian(mahasiswa.tglSkDekan),
     },
@@ -179,6 +190,7 @@ export async function getTranskripPdfData(id: number): Promise<TranskripPdfData>
 
   return {
     noSeri: transkrip.noSeri,
+    tanggalCetak: formatDateIndonesian(transkrip.tanggalCetak) ?? "-",
     biodata,
     courses: transkrip.mataKuliahSnapshot as unknown as ScrapedCourseRow[],
     totalSks: transkrip.totalSks,
