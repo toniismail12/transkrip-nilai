@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
+enum StatusCetak {
+  BELUM_CETAK
+  SUDAH_CETAK
+}
+
+enum JenjangPendidikan {
+  D3
+  D4
+  S1
+  S2
+  S3
+  PROFESI
+}
+
+enum StatusTranskrip {
+  GENERATED
+  VOID
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String
+  name         String
+  email        String?
+  passwordHash String    @map("password_hash")
+  role         Role      @default(OPERATOR)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  transkripList Transkrip[]   @relation("CetakOleh")
+  activityLogs  ActivityLog[]
+
+  @@index([username])
+  @@index([email])
+  @@index([role])
+  @@index([deletedAt])
+  @@map("user")
+}
+
+model Fakultas {
+  id        Int       @id @default(autoincrement())
+  nama      String
+  kode      String?
+  dekan     String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  programStudiList ProgramStudi[]
+  mahasiswaList    Mahasiswa[]
+
+  @@index([nama])
+  @@index([kode])
+  @@index([deletedAt])
+  @@map("fakultas")
+}
+
+model ProgramStudi {
+  id         Int               @id @default(autoincrement())
+  fakultasId Int               @map("id_fakultas")
+  nama       String
+  kode       String?
+  jenjang    JenjangPendidikan
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+  deletedAt  DateTime?         @map("deleted_at")
+
+  fakultas      Fakultas    @relation(fields: [fakultasId], references: [id], onDelete: Restrict)
+  mahasiswaList Mahasiswa[]
+
+  @@index([fakultasId, nama])
+  @@index([kode])
+  @@index([deletedAt])
+  @@map("program_studi")
+}
+
+model Akreditasi {
+  id         Int       @id @default(autoincrement())
+  nama       String
+  keterangan String?
+  isActive   Boolean   @default(false) @map("is_active")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("akreditasi")
+}
+
+model Mahasiswa {
+  id             Int         @id @default(autoincrement())
+  npm            String
+  nama           String
+  tempatLahir    String      @map("tempat_lahir")
+  tanggalLahir   DateTime    @map("tanggal_lahir") @db.Date
+  tahunMasuk     Int         @map("tahun_masuk")
+  fakultasId     Int         @map("id_fakultas")
+  programStudiId Int         @map("id_program_studi")
+  statusCetak    StatusCetak @default(BELUM_CETAK) @map("status_cetak")
+  tanggalLulus   DateTime?   @map("tanggal_lulus") @db.Date
+  judulSkripsi   String?     @map("judul_skripsi")
+  konsentrasi    String?
+  noIjazah       String?     @map("no_ijazah")
+  noSeri         String?     @map("no_seri")
+  tglSkDekan     DateTime?   @map("tgl_sk_dekan") @db.Date
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  deletedAt      DateTime?   @map("deleted_at")
+
+  fakultas      Fakultas     @relation(fields: [fakultasId], references: [id], onDelete: Restrict)
+  programStudi  ProgramStudi @relation(fields: [programStudiId], references: [id], onDelete: Restrict)
+  transkripList Transkrip[]
+
+  @@index([npm])
+  @@index([noIjazah])
+  @@index([noSeri])
+  @@index([fakultasId])
+  @@index([programStudiId])
+  @@index([statusCetak])
+  @@index([deletedAt])
+  @@map("mahasiswa")
+}
+
+model Transkrip {
+  id                    Int             @id @default(autoincrement())
+  mahasiswaId           Int             @map("id_mahasiswa")
+  npmSnapshot           String          @map("npm_snapshot")
+  namaSnapshot          String          @map("nama_snapshot")
+  cetakOlehId           Int?            @map("id_cetak_oleh")
+  cetakOlehNamaSnapshot String          @map("cetak_oleh_nama_snapshot")
+  noSeri                String?         @map("no_seri")
+  ipk                   Decimal         @db.Decimal(3, 2)
+  totalSks              Int             @map("total_sks")
+  totalBobotNilai       Decimal         @map("total_bobot_nilai") @db.Decimal(6, 2)
+  predikat              String
+  judulSkripsiSnapshot  String?         @map("judul_skripsi_snapshot")
+  biodataSnapshot       Json            @map("biodata_snapshot")
+  mataKuliahSnapshot    Json            @map("matakuliah_snapshot")
+  status                StatusTranskrip @default(GENERATED)
+  voidedAt              DateTime?       @map("voided_at")
+  voidReason            String?         @map("void_reason")
+  scrapedAt             DateTime        @map("scraped_at")
+  tanggalCetak          DateTime        @default(now()) @map("tanggal_cetak")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  mahasiswa Mahasiswa @relation(fields: [mahasiswaId], references: [id], onDelete: Restrict)
+  cetakOleh User?     @relation("CetakOleh", fields: [cetakOlehId], references: [id], onDelete: SetNull)
+
+  @@index([mahasiswaId])
+  @@index([cetakOlehId])
+  @@index([tanggalCetak])
+  @@index([status])
+  @@map("transkrip")
+}
+
+model Setting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       Json
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("setting")
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int?     @map("id_user")
+  userNama    String?  @map("user_nama_snapshot")
+  action      String
+  entityType  String?  @map("entity_type")
+  entityId    Int?     @map("entity_id")
+  description String
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("activity_log")
+}
