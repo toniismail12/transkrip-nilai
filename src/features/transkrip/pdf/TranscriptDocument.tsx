@@ -11,6 +11,12 @@ const CM_PT = 28.3465;
 const PHOTO_WIDTH_PT = 3 * CM_PT;
 const PHOTO_HEIGHT_PT = 4 * CM_PT;
 
+const BORDER_WIDTH_PT = 1;
+// The summary box below the table reuses these so its dividers fall on the same vertical
+// lines as the "K" and "M" columns above it.
+const COL_K_WIDTH_PT = 28;
+const COL_M_WIDTH_PT = 36;
+
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Courier",
@@ -53,12 +59,20 @@ const styles = StyleSheet.create({
   bioValue: {
     flex: 1,
   },
+  // No bottom gap: the summary box hangs straight off the table's closing edge.
   table: {
-    marginBottom: 10,
+    marginBottom: 0,
   },
   tableRow: {
     flexDirection: "row",
   },
+  // Ruled between columns and around the outside, but never between rows. Every cell's
+  // `borderLeft` doubles as the column divider and — on the first column — as the frame's
+  // left rail. The frame is built from the cells' own edges rather than a border on the
+  // wrapping container because react-pdf draws a container border only on the first page
+  // fragment, so a table spilling over a page break would lose its top and bottom edges.
+  // The header and the closing edge are both `fixed`, which keeps each page's slice of
+  // the table a fully closed box.
   tableHeaderCell: {
     borderTop: "1pt solid #000",
     borderBottom: "1pt solid #000",
@@ -68,11 +82,7 @@ const styles = StyleSheet.create({
     fontWeight: 700,
     textAlign: "center",
   },
-  tableHeaderCellLast: {
-    borderRight: "1pt solid #000",
-  },
   tableCell: {
-    borderBottom: "1pt solid #000",
     borderLeft: "1pt solid #000",
     paddingVertical: 1.5,
     paddingHorizontal: 3,
@@ -80,28 +90,37 @@ const styles = StyleSheet.create({
   tableCellLast: {
     borderRight: "1pt solid #000",
   },
+  tableBottomEdge: {
+    borderTop: "1pt solid #000",
+  },
   colNo: { width: 26, textAlign: "center" },
   colKode: { width: 58, textAlign: "center" },
   colMataKuliah: { flex: 1 },
   colHm: { width: 30, textAlign: "center" },
   colAm: { width: 30, textAlign: "center" },
-  colK: { width: 28, textAlign: "center" },
-  colM: { width: 36, textAlign: "center" },
+  colK: { width: COL_K_WIDTH_PT, textAlign: "center" },
+  colM: { width: COL_M_WIDTH_PT, textAlign: "center" },
   summaryBlock: {
     flexDirection: "row",
     alignItems: "flex-start",
     marginBottom: 14,
   },
+  // The box sits flush under the table, so only the legend needs clearance from that rule.
   legend: {
     flex: 1,
     paddingRight: 12,
+    paddingTop: 8,
   },
   // Hangs the second half of the "Angka Mutu" scale under the first, as on the printed form.
   legendIndent: {
     paddingLeft: 43,
   },
+  // Pulled up by exactly the border width so its top edge lands on the table's closing
+  // rule instead of stacking below it as a second, thicker-looking line. The box keeps a
+  // border of its own so it still reads as closed if it is pushed onto the next page.
   summaryBox: {
     width: 250,
+    marginTop: -1,
     border: "1pt solid #000",
   },
   summaryRow: {
@@ -117,21 +136,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   summarySks: {
-    width: 42,
+    width: COL_K_WIDTH_PT,
     borderLeft: "1pt solid #000",
     paddingVertical: 3,
     paddingHorizontal: 5,
     textAlign: "center",
   },
+  // One border narrower than the M column it lines up under: the box's own right border
+  // stands in for this cell's, so the shared edge is not counted twice.
   summaryBobot: {
-    width: 46,
+    width: COL_M_WIDTH_PT - BORDER_WIDTH_PT,
     borderLeft: "1pt solid #000",
     paddingVertical: 3,
     paddingHorizontal: 5,
     textAlign: "center",
   },
+  // Spans the K and M columns at once, so its left divider lands on the K column's.
   summaryIpk: {
-    width: 88,
+    width: COL_K_WIDTH_PT + COL_M_WIDTH_PT - BORDER_WIDTH_PT,
     borderLeft: "1pt solid #000",
     paddingVertical: 3,
     paddingHorizontal: 5,
@@ -168,9 +190,6 @@ const styles = StyleSheet.create({
   // Blank space reserved for the wet-ink signature and stamp (legacy used a 91px gap).
   signatureSpace: {
     height: 91,
-  },
-  dekanName: {
-    textDecoration: "underline",
   },
   watermark: {
     position: "absolute",
@@ -256,7 +275,7 @@ export function TranscriptDocument({ data, watermarkText }: TranscriptDocumentPr
             <Text style={[styles.tableHeaderCell, styles.colHm]}>HM</Text>
             <Text style={[styles.tableHeaderCell, styles.colAm]}>AM</Text>
             <Text style={[styles.tableHeaderCell, styles.colK]}>K</Text>
-            <Text style={[styles.tableHeaderCell, styles.tableHeaderCellLast, styles.colM]}>M</Text>
+            <Text style={[styles.tableHeaderCell, styles.tableCellLast, styles.colM]}>M</Text>
           </View>
           {data.courses.map((course, index) => (
             <View style={styles.tableRow} key={`${course.kodeMatakuliah}-${index}`} wrap={false}>
@@ -271,6 +290,9 @@ export function TranscriptDocument({ data, watermarkText }: TranscriptDocumentPr
               </Text>
             </View>
           ))}
+          {/* `fixed` closes the frame on every page: at the page foot where the table is
+              cut off, and directly under the last course on the final page. */}
+          <View style={styles.tableBottomEdge} fixed />
         </View>
 
         <View style={styles.summaryBlock} wrap={false}>
@@ -309,7 +331,7 @@ export function TranscriptDocument({ data, watermarkText }: TranscriptDocumentPr
             <Text>Palembang, {data.tanggalCetak}</Text>
             <Text>{formatDekanTitle(biodata.fakultas)},</Text>
             <View style={styles.signatureSpace} />
-            <Text style={styles.dekanName}>{biodata.dekanNama || "-"}</Text>
+            <Text>{biodata.dekanNama || "-"}</Text>
           </View>
         </View>
       </Page>

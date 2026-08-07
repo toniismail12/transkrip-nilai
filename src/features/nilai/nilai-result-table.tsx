@@ -58,7 +58,7 @@ export function NilaiResultTable({ result }: NilaiResultTableProps) {
               <TableHead className="text-center">M</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody>
+          <TableBody className="[&_tr]:border-b-0">
             {result.courses.length ? (
               result.courses.map((course, index) => (
                 <TableRow key={`${course.kodeMatakuliah}-${index}`}>
